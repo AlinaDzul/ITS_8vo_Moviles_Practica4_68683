@@ -20,8 +20,8 @@ class MyApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/home': (context) => const MyHomePage(title: 'ToDo List'),
         '/register': (context) => const RegisterScreen(),
-        '/todo': (context) => const MyHomePage(),
       },
     );
   }
@@ -45,12 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _formKey.currentState!.save();
       try {
         await ApiService.login(_username, _password);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyHomePage(title: 'ToDo List - $_username'),
-          ),
-        );
+        Navigator.pushReplacementNamed(context, '/home');
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -165,13 +160,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _formKey.currentState!.save();
       try {
         await ApiService.register(_username, _password);
-        await ApiService.login(_username, _password); // Login automático tras registro
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyHomePage(title: 'ToDo List - $_username'),
-          ),
-        );
+        await ApiService.login(_username, _password);
+        Navigator.pushReplacementNamed(context, '/home');
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -304,12 +294,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TaskScreen(
-          task: index != null ? tasks[index] : null,
-        ),
+        builder: (context) => TaskScreen(task: index != null ? tasks[index] : null),
       ),
     );
-
     if (result != null) {
       try {
         if (index != null) {
@@ -339,16 +326,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _toggleTaskCompletion(int index) async {
     try {
-      await ApiService.toggleTaskCompletion(
-        tasks[index]['id'],
-        !tasks[index]['completada'],
-      );
+      await ApiService.toggleTaskCompletion(tasks[index]['id'], !tasks[index]['completada']);
       _loadTasks();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     }
+  }
+
+  void _logout() async {
+    await ApiService.logout();
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -369,6 +358,13 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(widget.title),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Cerrar sesión',
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: tasks.isEmpty
           ? const Center(
@@ -398,9 +394,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.edit),
-                    onPressed: () {
-                      _navigateToTaskScreen(index: index);
-                    },
+                    onPressed: () => _navigateToTaskScreen(index: index),
                   ),
                   IconButton(
                     icon: Icon(
@@ -408,15 +402,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           ? Icons.check_circle
                           : Icons.check_circle_outline,
                     ),
-                    onPressed: () {
-                      _toggleTaskCompletion(index);
-                    },
+                    onPressed: () => _toggleTaskCompletion(index),
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete),
-                    onPressed: () {
-                      _deleteTask(index);
-                    },
+                    onPressed: () => _deleteTask(index),
                   ),
                 ],
               ),
@@ -425,9 +415,7 @@ class _MyHomePageState extends State<MyHomePage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _navigateToTaskScreen();
-        },
+        onPressed: _navigateToTaskScreen,
         tooltip: 'Agregar tarea',
         child: const Icon(Icons.add),
       ),
